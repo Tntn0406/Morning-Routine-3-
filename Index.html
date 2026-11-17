@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f6f4ef">
+  <title>Morning Routine</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --card: #ffffff;
+      --text: #1f2522;
+      --muted: #6f756f;
+      --line: #e4e1d9;
+      --accent: #5b735f;
+      --accent-soft: #e7eee7;
+      --done: #dfe9df;
+      --shadow: 0 8px 30px rgba(31, 37, 34, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main {
+      width: min(100%, 560px);
+      margin: 0 auto;
+      padding: max(28px, env(safe-area-inset-top)) 20px 40px;
+    }
+    header { padding: 14px 4px 22px; }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 9vw, 48px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+    .date {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(228,225,217,.8);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .week {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+    }
+    .week-title { font-size: 16px; font-weight: 750; }
+    .week-count {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+    .week-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .progress {
+      height: 10px;
+      background: #eceae4;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: inherit;
+      transition: width .25s ease;
+    }
+    .habit {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .habit:last-child { border-bottom: 0; padding-bottom: 0; }
+    .habit:first-child { padding-top: 2px; }
+    .habit-name {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -.02em;
+    }
+    .habit-meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 5px;
+      line-height: 1.35;
+    }
+    button {
+      border: 0;
+      border-radius: 16px;
+      min-width: 132px;
+      min-height: 50px;
+      padding: 12px 16px;
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-weight: 750;
+      font-size: 15px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    button:active { transform: scale(.98); }
+    button.done {
+      background: var(--done);
+      color: #38503c;
+    }
+    .footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    @media (max-width: 420px) {
+      .habit { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Morning routine</p>
+    <h1>Good morning.</h1>
+    <p class="date" id="today"></p>
+  </header>
+
+  <section class="card" aria-label="Weekly progress">
+    <div class="week">
+      <div>
+        <div class="week-title">This week</div>
+        <div class="week-sub">Goal: 3 workouts + 3 water logs</div>
+      </div>
+      <div class="week-count" id="overall">0 / 6</div>
+    </div>
+    <div class="progress" aria-hidden="true">
+      <div class="bar" id="overallBar"></div>
+    </div>
+
+    <div class="habit">
+      <div>
+        <div class="habit-name">30-minute workout</div>
+        <div class="habit-meta" id="workoutMeta">0 of 3 this week · 3 left</div>
+      </div>
+      <button id="workoutBtn" type="button">Log workout</button>
+    </div>
+
+    <div class="habit">
+      <div>
+        <div class="habit-name">Drink water</div>
+        <div class="habit-meta" id="waterMeta">0 of 3 this week · 3 left</div>
+      </div>
+      <button id="waterBtn" type="button">Log water</button>
+    </div>
+  </section>
+
+  <div class="footer">
+    Your progress is saved on this device in your browser. Each habit can be logged once per day.
+  </div>
+</main>
+
+<script>
+(() => {
+  const KEY = "morningRoutine_v1";
+  const today = new Date();
+  const dateKey = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const mondayOf = d => {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0,0,0,0);
+    return x;
+  };
+  const load = () => {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+    catch (_) { return {}; }
+  };
+  const save = data => localStorage.setItem(KEY, JSON.stringify(data));
+
+  let data = load();
+  const todayKey = dateKey(today);
+  const weekStart = mondayOf(today);
+
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    weekDays.push(dateKey(d));
+  }
+
+  const count = habit =>
+    weekDays.reduce((n, key) => n + (data[key]?.[habit] ? 1 : 0), 0);
+
+  const loggedToday = habit => Boolean(data[todayKey]?.[habit]);
+
+  const setLogged = habit => {
+    if (!data[todayKey]) data[todayKey] = {};
+    data[todayKey][habit] = !loggedToday(habit);
+    save(data);
+    render();
+  };
+
+  const fmtDate = d => d.toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric"
+  });
+
+  function render() {
+    document.getElementById("today").textContent = fmtDate(today);
+
+    const workout = count("workout");
+    const water = count("water");
+    const total = workout + water;
+    const percent = Math.round((total / 6) * 100);
+
+    document.getElementById("overall").textContent = `${total} / 6`;
+    document.getElementById("overallBar").style.width = `${percent}%`;
+
+    const wLeft = Math.max(0, 3 - workout);
+    const hLeft = Math.max(0, 3 - water);
+    document.getElementById("workoutMeta").textContent =
+      `${Math.min(workout, 3)} of 3 this week · ${wLeft} left`;
+    document.getElementById("waterMeta").textContent =
+      `${Math.min(water, 3)} of 3 this week · ${hLeft} left`;
+
+    const wb = document.getElementById("workoutBtn");
+    const hb = document.getElementById("waterBtn");
+
+    wb.classList.toggle("done", loggedToday("workout"));
+    hb.classList.toggle("done", loggedToday("water"));
+    wb.textContent = loggedToday("workout") ? "✓ Logged today" : "Log workout";
+    hb.textContent = loggedToday("water") ? "✓ Logged today" : "Log water";
+    wb.setAttribute("aria-pressed", loggedToday("workout"));
+    hb.setAttribute("aria-pressed", loggedToday("water"));
+  }
+
+  document.getElementById("workoutBtn").addEventListener("click", () => setLogged("workout"));
+  document.getElementById("waterBtn").addEventListener("click", () => setLogged("water"));
+  render();
+})();
+</script>
+</body>
+</html>
